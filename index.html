@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.coingecko.com https://finnhub.io https://api.twelvedata.com https://api.binance.com https://api.coinbase.com; base-uri 'none'; form-action 'none'">
+<title>ทดสอบเชื่อมต่อ API ราคา</title>
+<style>
+:root{--bg:#0f1412;--card:#18201c;--line:#2b3a32;--tx:#e8efe9;--mu:#9bb0a4;--ok:#3ddc84;--bad:#ff6b6b;--warn:#ffc857}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px;max-width:640px;margin-inline:auto}
+h1{font-size:19px;margin:0 0 4px}h2{font-size:16px;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+.mu{color:var(--mu);font-size:13px}
+.risk{border-color:var(--warn)}
+.risk li{margin:4px 0}
+label.f{display:block;margin:10px 0 2px;font-size:13px;color:var(--mu)}
+input[type=text]{width:100%;min-height:44px;border-radius:8px;border:1px solid var(--line);background:#0c110f;color:var(--tx);padding:8px 10px;font:14px ui-monospace,Menlo,monospace;-webkit-text-security:disc}
+input.show{-webkit-text-security:none}
+button{min-height:44px;border-radius:10px;border:1px solid var(--line);background:#22302a;color:var(--tx);font:600 14px system-ui,sans-serif;padding:8px 14px;margin:6px 6px 0 0}
+button.pri{background:var(--ok);color:#062014;border-color:var(--ok)}
+button:disabled{opacity:.4}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.badge{font-size:12px;font-weight:700;border-radius:99px;padding:2px 10px;border:1px solid}
+.pass{color:var(--ok);border-color:var(--ok)}.fail{color:var(--bad);border-color:var(--bad)}.warn{color:var(--warn);border-color:var(--warn)}
+.res{border-top:1px dashed var(--line);margin-top:10px;padding-top:8px}
+.res div{word-break:break-word}
+pre,textarea{width:100%;background:#0c110f;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px ui-monospace,Menlo,monospace;white-space:pre-wrap}
+textarea{min-height:160px}
+details summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600}
+</style>
+</head>
+<body>
+<h1>ทดสอบเชื่อมต่อ API ราคา</h1>
+<div class="mu">หน้าทดสอบแยกต่างหาก ไม่เกี่ยวกับ MISSION CONTROL ไม่แตะข้อมูลของคุณ ไม่มีราคาจำลองในหน้านี้: ตัวเลขที่เห็นคือสิ่งที่ API ตอบกลับมาจริงเท่านั้น</div>
+
+<div class="card risk">
+<h2>อ่านก่อนวาง API key</h2>
+<ul>
+<li>คีย์ที่วางจะถูกส่งจากเบราว์เซอร์ของคุณตรงไปยังผู้ให้บริการ (CoinGecko, Finnhub, Twelve Data) ผ่าน HTTPS ไม่ผ่านผมและไม่ผ่านเซิร์ฟเวอร์อื่น</li>
+<li>หน้านี้<b>ไม่บันทึกคีย์</b>ไว้ที่ใดเลย (ไม่ใช้ localStorage) ปิดหน้าหรือรีเฟรชแล้วคีย์หาย</li>
+<li>คีย์อยู่ใน URL ของคำขอ จึงมองเห็นได้ในเครื่องมือนักพัฒนาของเบราว์เซอร์ และผู้ให้บริการอาจเก็บลงบันทึกของเขา</li>
+<li><b>ห้ามใส่คีย์ลงในไฟล์ใน GitHub</b> repository สาธารณะ ใครก็ดูได้ และอย่าส่งคีย์หรือภาพหน้าจอที่เห็นคีย์ในแชต</li>
+<li>ใช้คีย์ฟรีที่สร้างใหม่สำหรับทดสอบโดยเฉพาะ คีย์เหล่านี้อ่านราคาได้อย่างเดียว ไม่แตะเงินหรือบัญชีซื้อขาย ถ้าสงสัยว่ารั่ว ให้ลบแล้วสร้างใหม่ที่เว็บผู้ให้บริการ</li>
+<li>เพื่อลดความเสี่ยง หน้านี้ตั้งนโยบายให้ส่งข้อมูลออกได้เฉพาะ 5 โดเมนที่ทดสอบเท่านั้น</li>
+</ul>
+<label><input type="checkbox" id="ack"> ฉันอ่านและเข้าใจความเสี่ยงข้างต้นแล้ว</label>
+</div>
+
+<div class="card">
+<div class="row"><h2>CoinGecko (BTC, SOL)</h2></div>
+<div class="mu">ทดสอบ 2 แบบ: ไม่ใช้คีย์ และใช้ Demo key</div>
+<label class="f" for="kcg">Demo API key ของ CoinGecko (ไม่บังคับ)</label>
+<input type="text" id="kcg" disabled autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="text" aria-label="CoinGecko Demo API key">
+<div><button id="b_cg0">ทดสอบแบบไม่ใช้คีย์</button><button id="b_cg1" disabled>ทดสอบด้วย Demo key</button></div>
+<div id="r_cg0"></div><div id="r_cg1"></div>
+</div>
+
+<div class="card">
+<div class="row"><h2>Finnhub (NVDA, AAPL, RBLX)</h2></div>
+<label class="f" for="kfh">API key ของ Finnhub</label>
+<input type="text" id="kfh" disabled autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Finnhub API key">
+<div><button id="b_fh" disabled>ทดสอบ Finnhub (3 คำขอ)</button></div>
+<div id="r_fh"></div>
+</div>
+
+<div class="card">
+<div class="row"><h2>Twelve Data (NVDA, AAPL, RBLX)</h2></div>
+<div class="mu">ทางเลือกแทน Finnhub: 1 คำขอ ใช้ 3 เครดิตจากโควตา 8 เครดิต/นาที</div>
+<label class="f" for="ktd">API key ของ Twelve Data</label>
+<input type="text" id="ktd" disabled autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Twelve Data API key">
+<div><button id="b_td" disabled>ทดสอบ Twelve Data (1 คำขอ)</button></div>
+<div id="r_td"></div>
+</div>
+
+<div class="card">
+<details><summary>ทางสำรองสำหรับคริปโต (ไม่ต้องใช้คีย์)</summary>
+<div class="mu">ใช้เฉพาะถ้า CoinGecko ไม่ผ่าน</div>
+<div><button id="b_bn">ทดสอบ Binance</button><button id="b_cb">ทดสอบ Coinbase</button></div>
+<div id="r_bn"></div><div id="r_cb"></div>
+</details>
+</div>
+
+<div class="card">
+<div class="row"><h2>รายงานผล</h2><span class="mu" id="cnt">ยิงคำขอแล้ว 0 ครั้ง</span></div>
+<div><button class="pri" id="b_all" disabled>ทดสอบทั้งหมดที่ใส่คีย์ไว้</button><button id="b_rep">สร้างรายงาน (ไม่มีคีย์)</button></div>
+<textarea id="rep" readonly aria-label="รายงานผล" placeholder="กดสร้างรายงาน แล้วคัดลอกส่งในแชตได้ รายงานไม่มีคีย์"></textarea>
+<button id="b_copy">คัดลอกรายงาน</button>
+<div class="mu">ผ่าน = ดึงได้จากเบราว์เซอร์นี้และข้อมูลครบ ไม่ได้แปลว่า real-time</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var $=function(i){return document.getElementById(i);};
+var calls=0,reports={};
+function keys(){return [$('kcg').value,$('kfh').value,$('ktd').value].map(function(x){return x.trim();}).filter(Boolean);}
+function mask(s){keys().forEach(function(k){if(k.length>3)s=String(s).split(k).join('***');});return s;}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function th(ts){return new Date(ts).toLocaleString('th-TH',{timeZone:'Asia/Bangkok',hour12:false})+' (เวลาไทย)';}
+function age(ms){var s=Math.round(ms/1000);if(s<0)return 'เวลาข้อมูลอยู่ในอนาคต '+(-s)+' วินาที';if(s<120)return s+' วินาทีที่แล้ว';var m=Math.round(s/60);if(m<120)return m+' นาทีที่แล้ว';var h=Math.round(m/60);if(h<48)return h+' ชั่วโมงที่แล้ว';return Math.round(h/24)+' วันที่แล้ว';}
+function mkt(){
+  try{
+    var f=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}),p={};
+    f.formatToParts(new Date()).forEach(function(x){p[x.type]=x.value;});
+    var mins=(parseInt(p.hour,10)%24)*60+parseInt(p.minute,10);
+    return {open:['Mon','Tue','Wed','Thu','Fri'].indexOf(p.weekday)>=0&&mins>=570&&mins<960,et:p.weekday+' '+p.hour+':'+p.minute+' ET'};
+  }catch(e){return null;}
+}
+function setCnt(){$('cnt').textContent='ยิงคำขอแล้ว '+calls+' ครั้ง';}
+/* คำขอเดียว: คืนผลดิบ ไม่แต่งตัวเลขใด ๆ */
+async function req(url){
+  calls++;setCnt();
+  var o={cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'},r;
+  try{r=await fetch(url,o);}
+  catch(e){
+    calls++;setCnt();
+    var reach;
+    try{await fetch(url,{mode:'no-cors',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});reach=true;}catch(e2){reach=false;}
+    return {net:true,reachable:reach,msg:String(e&&e.message||e)};
+  }
+  var txt='',json=null;
+  try{txt=await r.text();}catch(e){}
+  try{json=JSON.parse(txt);}catch(e){}
+  var hs=[];try{r.headers.forEach(function(v,k){if(/rate|limit|retry|remain|reset|credit/i.test(k))hs.push(k+': '+v);});}catch(e){}
+  return {status:r.status,statusText:r.statusText,txt:txt,json:json,hs:hs};
+}
+function netLines(x){
+  var L=['HTTP: ไม่ได้รับคำตอบที่อ่านได้'];
+  if(x.reachable)L.push('CORS: <b>ถูกบล็อก</b> เซิร์ฟเวอร์ตอบ แต่ไม่อนุญาตให้เว็บนี้อ่านคำตอบจากเบราว์เซอร์ (ต้องใช้ proxy หรือเลือกแหล่งอื่น)');
+  else L.push('CORS: ตัดสินไม่ได้ เข้าถึงเซิร์ฟเวอร์ไม่ได้เลย (ไม่มีอินเทอร์เน็ต, ถูกบล็อกเครือข่าย หรือนโยบายความปลอดภัยของหน้านี้)');
+  L.push('รายละเอียดที่เบราว์เซอร์ให้: '+esc(x.msg));
+  return L;
+}
+function common(x){
+  var L=['HTTP: '+x.status+(x.statusText?' '+esc(x.statusText):''),'CORS: <b>ผ่าน</b> เบราว์เซอร์อ่านคำตอบได้'];
+  L.push(x.hs.length?'โควตา/ลิมิต (header ที่เบราว์เซอร์อ่านได้): '+esc(x.hs.join(' | ')):'โควตา: ไม่มี header ที่อ่านได้จากเบราว์เซอร์ (ผู้ให้บริการอาจไม่เปิดเผย)');
+  return L;
+}
+function errText(x){
+  var m=x.json&&(x.json.error||x.json.message||(x.json.status&&x.json.status.error_message)||(x.json.error&&x.json.error.message));
+  if(!m&&x.json&&typeof x.json==='object')m=JSON.stringify(x.json).slice(0,200);
+  if(m&&typeof m==='object')m=JSON.stringify(m).slice(0,200);
+  if(!m)m=(x.txt||'').slice(0,200);
+  return mask(m);
+}
+function render(id,name,verdict,L,url){
+  var lab={pass:'ผ่าน',fail:'ไม่ผ่าน',warn:'ผ่านบางส่วน'}[verdict];
+  $('r_'+id).innerHTML='<div class="res"><div class="row"><b>'+esc(name)+'</b><span class="badge '+verdict+'">'+lab+'</span></div>'
+    +(url?'<div class="mu">'+esc(mask(url))+'</div>':'')+L.map(function(l){return '<div>'+l+'</div>';}).join('')
+    +'<div class="mu">ทดสอบเมื่อ '+esc(th(Date.now()))+'</div></div>';
+  var plain=L.map(function(l){return l.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"');}).join('\n  ');
+  reports[id]='['+lab+'] '+name+'\n  '+mask(url||'')+'\n  '+plain+'\n  ทดสอบเมื่อ '+th(Date.now());
+}
+function bad(v){return typeof v!=='number'||!isFinite(v)||v<=0;}
+
+/* ---------- CoinGecko ---------- */
+async function cg(withKey){
+  var id=withKey?'cg1':'cg0',name='CoinGecko '+(withKey?'(Demo key)':'(ไม่ใช้คีย์)');
+  var k=$('kcg').value.trim();
+  if(withKey&&!k){render(id,name,'fail',['ยังไม่ได้ใส่คีย์ ไม่ได้ทดสอบ']);return;}
+  var url='https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,solana&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true'+(withKey?'&x_cg_demo_api_key='+encodeURIComponent(k):'');
+  $('r_'+id).innerHTML='<div class="res mu">กำลังทดสอบ…</div>';
+  var x=await req(url);
+  if(x.net){render(id,name,'fail',netLines(x),url);return;}
+  var L=common(x);
+  if(x.status!==200||!x.json){L.push('ข้อผิดพลาด: '+esc(errText(x)));if(x.status===429)L.push('โควตาเต็ม (429) รอสักครู่แล้วลองใหม่');if(x.status===401||x.status===403||x.status===10002)L.push('คีย์ไม่ถูกต้องหรือไม่มีสิทธิ์');render(id,name,'fail',L,url);return;}
+  var okAll=true,newest=0;
+  [['bitcoin','BTC'],['solana','SOL']].forEach(function(p){
+    var d=x.json[p[0]];
+    if(!d||bad(d.usd)){okAll=false;L.push(p[1]+': ไม่มีข้อมูล');return;}
+    var t=d.last_updated_at?d.last_updated_at*1000:0;if(t>newest)newest=t;
+    L.push(p[1]+': $'+d.usd+(typeof d.usd_24h_change==='number'?' · 24ชม. '+d.usd_24h_change.toFixed(2)+'%':'')+(t?' · เวลาข้อมูล '+esc(th(t))+' ('+age(Date.now()-t)+')':' · ไม่มีเวลาข้อมูล'));
+  });
+  if(okAll&&newest)L.push(Date.now()-newest<=180000?'ความสดของข้อมูล: ไม่เกิน 3 นาที':'ความสดของข้อมูล: <b>เก่ากว่า 3 นาที</b> ห้ามแสดงเป็น Live');
+  render(id,name,okAll?'pass':'fail',L,url);
+}
+/* ---------- Finnhub ---------- */
+async function fh(){
+  var name='Finnhub (หุ้นสหรัฐฯ)',k=$('kfh').value.trim();
+  if(!k){render('fh',name,'fail',['ยังไม่ได้ใส่คีย์ ไม่ได้ทดสอบ']);return;}
+  $('r_fh').innerHTML='<div class="res mu">กำลังทดสอบ…</div>';
+  var L=[],pass=0,m=mkt(),lastUrl='';
+  var syms=['NVDA','AAPL','RBLX'];
+  for(var i=0;i<syms.length;i++){
+    var s=syms[i],url='https://finnhub.io/api/v1/quote?symbol='+s+'&token='+encodeURIComponent(k);lastUrl=url;
+    var x=await req(url);
+    if(x.net){L=L.concat(['<b>'+s+'</b>']).concat(netLines(x));break;}
+    if(i===0)L=L.concat(common(x));
+    if(x.status!==200||!x.json){L.push('<b>'+s+'</b>: HTTP '+x.status+' · '+esc(errText(x)));if(x.status===429)L.push('โควตาเต็ม (429)');if(x.status===401||x.status===403)L.push('คีย์ไม่ถูกต้อง หรือสัญลักษณ์นี้ไม่อยู่ในแผนฟรี');continue;}
+    var q=x.json;
+    if(bad(q.c)){L.push('<b>'+s+'</b>: ไม่มีราคา (c='+esc(String(q.c))+')');continue;}
+    var t=q.t?q.t*1000:0;
+    L.push('<b>'+s+'</b>: $'+q.c+(typeof q.dp==='number'?' · เปลี่ยน '+q.dp.toFixed(2)+'%':'')+(t?' · เวลาซื้อขายล่าสุด '+esc(th(t))+' ('+age(Date.now()-t)+')':' · ไม่มีเวลาข้อมูล'));
+    pass++;
+    await new Promise(function(r){setTimeout(r,300);});
+  }
+  if(m)L.push(stockNote(m,null));
+  render('fh',name,pass===3?'pass':pass>0?'warn':'fail',L,lastUrl);
+}
+function stockNote(m,t){
+  return 'ตลาดสหรัฐฯ ตอนนี้: <b>'+(m.open?'น่าจะเปิด':'น่าจะปิด')+'</b> ('+esc(m.et)+') '+(m.open?'ถ้าเวลาข้อมูลเก่ากว่า 2 นาที ให้ถือว่าอาจ delayed ห้ามแสดง Live':'ราคาที่ได้เป็นราคาล่าสุดก่อนปิด ทดสอบความ real-time ไม่ได้ ควรทดสอบซ้ำตอนตลาดเปิด');
+}
+/* ---------- Twelve Data ---------- */
+async function td(){
+  var name='Twelve Data (หุ้นสหรัฐฯ)',k=$('ktd').value.trim();
+  if(!k){render('td',name,'fail',['ยังไม่ได้ใส่คีย์ ไม่ได้ทดสอบ']);return;}
+  var url='https://api.twelvedata.com/quote?symbol=NVDA,AAPL,RBLX&apikey='+encodeURIComponent(k);
+  $('r_td').innerHTML='<div class="res mu">กำลังทดสอบ…</div>';
+  var x=await req(url);
+  if(x.net){render('td',name,'fail',netLines(x),url);return;}
+  var L=common(x);
+  if(!x.json){L.push('ข้อผิดพลาด: '+esc(errText(x)));render('td',name,'fail',L,url);return;}
+  var j=x.json,pass=0,m=mkt();
+  if(j.status==='error'&&j.code){L.push('ข้อผิดพลาดจากผู้ให้บริการ (code '+esc(String(j.code))+'): '+esc(mask(j.message||'')));if(Number(j.code)===429)L.push('โควตาเต็ม');render('td',name,'fail',L,url);return;}
+  ['NVDA','AAPL','RBLX'].forEach(function(s){
+    var d=j[s];
+    if(!d||d.status==='error'){L.push('<b>'+s+'</b>: '+esc(d?mask(d.message||'ผิดพลาด'):'ไม่มีข้อมูล'));return;}
+    var p=parseFloat(d.close),t=d.timestamp?d.timestamp*1000:0;
+    if(bad(p)){L.push('<b>'+s+'</b>: ไม่มีราคา');return;}
+    pass++;
+    L.push('<b>'+s+'</b>: $'+p+(d.percent_change?' · เปลี่ยน '+parseFloat(d.percent_change).toFixed(2)+'%':'')+' · ตลาด'+(d.is_market_open===true?'เปิด':d.is_market_open===false?'ปิด':'ไม่ทราบสถานะ')+(t?' · เวลาข้อมูล '+esc(th(t))+' ('+age(Date.now()-t)+')':' · เวลาข้อมูล '+esc(String(d.datetime||'ไม่มี'))));
+  });
+  if(m)L.push(stockNote(m,null));
+  render('td',name,pass===3?'pass':pass>0?'warn':'fail',L,url);
+}
+/* ---------- สำรอง ---------- */
+async function bn(){
+  var name='Binance (ไม่ใช้คีย์)',url='https://api.binance.com/api/v3/ticker/24hr?symbols='+encodeURIComponent('["BTCUSDT","SOLUSDT"]');
+  $('r_bn').innerHTML='<div class="res mu">กำลังทดสอบ…</div>';
+  var x=await req(url);if(x.net){render('bn',name,'fail',netLines(x),url);return;}
+  var L=common(x);
+  if(x.status!==200||!Array.isArray(x.json)){L.push('ข้อผิดพลาด: '+esc(errText(x)));render('bn',name,'fail',L,url);return;}
+  var n=0;x.json.forEach(function(d){var p=parseFloat(d.lastPrice);if(bad(p))return;n++;L.push(esc(d.symbol)+': $'+p+' · 24ชม. '+parseFloat(d.priceChangePercent).toFixed(2)+'% · เวลา '+esc(th(d.closeTime))+' ('+age(Date.now()-d.closeTime)+')');});
+  L.push('หมายเหตุ: ราคาเป็นคู่ USDT ไม่ใช่ USD');
+  render('bn',name,n===2?'pass':'fail',L,url);
+}
+async function cb(){
+  var name='Coinbase (ไม่ใช้คีย์)',L=[],n=0,last='';
+  $('r_cb').innerHTML='<div class="res mu">กำลังทดสอบ…</div>';
+  var pairs=['BTC-USD','SOL-USD'];
+  for(var i=0;i<pairs.length;i++){
+    var url='https://api.coinbase.com/v2/prices/'+pairs[i]+'/spot';last=url;
+    var x=await req(url);
+    if(x.net){L=L.concat(netLines(x));break;}
+    if(i===0)L=L.concat(common(x));
+    var p=x.json&&x.json.data?parseFloat(x.json.data.amount):NaN;
+    if(x.status!==200||bad(p)){L.push(pairs[i]+': ไม่มีราคา · '+esc(errText(x)));continue;}
+    n++;L.push(pairs[i]+': $'+p+' · ไม่มีเวลาข้อมูลในคำตอบ (ตรวจความสดไม่ได้)');
+  }
+  render('cb',name,n===2?'warn':'fail',L,last);
+}
+/* ---------- ปุ่ม ---------- */
+function setKeyUi(on){['kcg','kfh','ktd','b_cg1','b_fh','b_td','b_all'].forEach(function(i){$(i).disabled=!on;});}
+$('ack').addEventListener('change',function(){setKeyUi($('ack').checked);if(!$('ack').checked){['kcg','kfh','ktd'].forEach(function(i){$(i).value='';});}});
+['kcg','kfh','ktd'].forEach(function(i){$(i).addEventListener('focus',function(){$(i).classList.add('show');});$(i).addEventListener('blur',function(){$(i).classList.remove('show');});});
+$('b_cg0').onclick=function(){cg(false);};
+$('b_cg1').onclick=function(){cg(true);};
+$('b_fh').onclick=fh;$('b_td').onclick=td;$('b_bn').onclick=bn;$('b_cb').onclick=cb;
+$('b_all').onclick=async function(){
+  $('b_all').disabled=true;
+  await cg(false);
+  if($('kcg').value.trim())await cg(true);
+  if($('kfh').value.trim())await fh();
+  if($('ktd').value.trim())await td();
+  $('b_all').disabled=!$('ack').checked;
+};
+function buildReport(){
+  var ids=['cg0','cg1','fh','td','bn','cb'],out=['รายงานทดสอบ API ราคา (ไม่มีคีย์ในรายงานนี้)','สร้างเมื่อ '+th(Date.now()),'เบราว์เซอร์: '+mask(navigator.userAgent),'คำขอที่ยิงจริง: '+calls+' ครั้ง',''];
+  ids.forEach(function(i){out.push(reports[i]||('['+i+'] ยังไม่ได้ทดสอบ'));out.push('');});
+  var t=out.join('\n');$('rep').value=mask(t);return mask(t);
+}
+$('b_rep').onclick=buildReport;
+$('b_copy').onclick=function(){
+  var t=buildReport();
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){$('b_copy').textContent='คัดลอกแล้ว';},function(){$('rep').select();});}
+  else{$('rep').select();}
+};
+})();
+</script>
+</body>
+</html>
